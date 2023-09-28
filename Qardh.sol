@@ -16,7 +16,7 @@ contract Qardh is Ownable, Pausable {
 
     enum E_accountType  {none, mosque, user, suspended }                   
     enum E_CurrencyType {none, crypto, fiat, offPlatform} 
-    enum E_donationStatus {none,sentByDonor,accepted,rejected}
+    enum E_donationStatus {none, sentByDonor, accepted, rejected}
     enum E_loanStatus   {
                          none,
                          initiatedByBorrower,
@@ -61,11 +61,8 @@ contract Qardh is Ownable, Pausable {
         E_CurrencyType repaymentType;
         uint256 lenderId;
         uint256 borrowerId;
-        address mosqueId;
-        // address lender;
-        // address borrower;
+        uint256 mosqueId;
         uint256 amount;
-        uint256 donationToMosque;
         uint256 dueDate;         
     }
 
@@ -89,7 +86,7 @@ contract Qardh is Ownable, Pausable {
     /*----------------------------------------- HELPING FUNCTIONS -------------------------------------------*/
     
     function checkMosqueIdExists(uint256 _mosqueId) private view returns (bool) {
-        return m_mosqueDetails[_mosqueId].accountType == E_accountType.mosque ? true : false; 
+        return m_mosqueDetails[_mosqueId].accountType == E_accountType.mosque; 
     }
 
     function checkMosqueAddressExists(address _address) private view returns (bool) {
@@ -98,12 +95,26 @@ contract Qardh is Ownable, Pausable {
     
     function checkUserIdExists(uint256 _userId) private view returns (bool) {
         return m_userDetails[_userId].accountType == E_accountType.user 
-               // ||  m_userDetails[_userId].accountType == E_accountType.suspended
-               ? false : true; 
+               ||  m_userDetails[_userId].accountType == E_accountType.suspended
+               ; 
     }
 
     function checkUserAddressExists(address _address) private view returns (bool) {
         return m_userId[_address] == 0? false: true;
+    }
+
+    function checkUserIsNotSuspended(uint256 _userId) private view {
+        if ( m_userDetails[_userId].accountType == E_accountType.suspended)
+            revert("user is suspended");
+    }
+
+    function checkIdAndAddressMatch(uint256 _id, address _address, E_accountType _accountType) private view returns (bool) {
+        if ( _accountType == E_accountType.user || _accountType == E_accountType.suspended ){
+            return _id == m_userId[_address];
+        }
+        if ( _accountType == E_accountType.mosque ){
+            return _id == m_mosqueId[_address];
+        }
     }
 
     function checkAddressExists(address _address) private view returns (bool) {
@@ -114,9 +125,22 @@ contract Qardh is Ownable, Pausable {
     //     delete m_loans[_loanId];        
     // }
 
-    // function checkLoanExists(uint256 _loanId) private view returns(bool) {
-    //    return m_loans[_loanId].loanStatus == E_loanStatus.none ? false : true; 
-    // }
+    function checkLoanIdExists(uint256 _loanId) private view returns(bool) {
+       return m_loans[_loanId].loanStatus == E_loanStatus.none ? false : true; 
+    }
+
+    function storeLoanDetails( uint256 _loanId, 
+                            E_CurrencyType _paymentType,
+                            E_CurrencyType _repaymentType,
+                            uint256 _lenderId,
+                            uint256 _borrowerId,
+                            uint256 _lenderAddress,
+                            uint256 _mosqueId,
+                            uint256 _amount,
+                            uint256 _dueDate
+                            ) private {
+                                
+    }
 
     // function checkAccountExists( uint256 _accountId ) private view returns (bool) {
     //     require (_accountId != 0, "userId can't be 0");
@@ -176,7 +200,7 @@ contract Qardh is Ownable, Pausable {
 
     function updateMosqueAddress(uint256 _mosqueId, address _newAddress) external onlyOwner {
 
-        require( checkMosqueIdExists(_mosqueId), "mosque exists" );
+        require( checkMosqueIdExists(_mosqueId), "mosque does not exist" );
         require( !checkAddressExists(_newAddress), "new address already registered");
         
         address oldAddress = m_mosqueDetails[_mosqueId].mosqueAddress;
@@ -202,7 +226,7 @@ contract Qardh is Ownable, Pausable {
 
     function updateUserAddress(uint256 _userId, address _newAddress) external onlyOwner {
 
-        require( checkUserIdExists(_userId), "user exists" );
+        require( checkUserIdExists(_userId), "user does not exist" );
         require( !checkAddressExists(_newAddress), "new address already registered");
         
         address oldAddress = m_userDetails[_userId].userAddress;
@@ -213,7 +237,45 @@ contract Qardh is Ownable, Pausable {
         //event
     }
 
+    /*----------------------------------------- LOANS -------------------------------------------*/
 
+    function initiateCryptoLoan(uint256 _loanId, 
+                                E_CurrencyType _repaymentType,
+                                uint256 _lenderId,
+                                uint256 _borrowerId,
+                                address _lenderAddress,
+                                uint256 _mosqueId,
+                                uint256 _amount,
+                                uint256 _dueDate) external whenNotPaused {
+
+        require( !checkLoanIdExists(_loanId), "loanId exists");
+        require( checkMosqueIdExists(_mosqueId), " invalid mosqueId" );
+        
+        if ( !checkUserIdExists(_lenderId))
+            addUser(_lenderId, _lenderAddress);
+        if ( !checkUserIdExists(_borrowerId))
+            addUser(_borrowerId, msg.sender);
+
+        require( checkIdAndAddressMatch(_borrowerId, msg.sender, E_accountType.user), "Id and address do not match");
+        require( checkIdAndAddressMatch(_lenderId, _lenderAddress, E_accountType.user), "Id and address do not match");
+
+        checkUserIsNotSuspended(_borrowerId); 
+        checkUserIsNotSuspended(_lenderId);
+
+        storeLoanDetails(   _loanId, 
+                            E_CurrencyType.crypto,
+                            _repaymentType,
+                            _lenderId,
+                            _borrowerId,
+                            _lenderAddress,
+                            _mosqueId,
+                            _amount,
+                            _dueDate
+        );
+
+
+
+    }
 
 
 
