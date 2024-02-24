@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract Qardh is Ownable, Pausable {
+contract LoanContract is Ownable, Pausable {
     using EnumerableSet for EnumerableSet.UintSet;
     /*----------------------------------------- STORAGE -------------------------------------------*/
 
@@ -18,7 +18,7 @@ contract Qardh is Ownable, Pausable {
     uint256 CryptoBalance;
 
     EnumerableSet.UintSet ActiveLoans;                                              //? function? needed! in the data migration
-    address QardhV2Address;
+    address LoanContractV2Address;
 
     enum E_accountType  {none, mosque, user, suspended }                   
     enum E_CurrencyType {none, crypto, fiat, offPlatform} 
@@ -274,8 +274,8 @@ contract Qardh is Ownable, Pausable {
     event  updatedUserAddress(uint256 _userId, address  oldAddress, address _newAddress );
 
 
-    function setQardhV2Address(address _address) external onlyOwner {
-        QardhV2Address = _address;
+    function setLoanContractV2Address(address _address) external onlyOwner {
+        LoanContractV2Address = _address;
     }
 
     /*----------------------------------------- LOANS -------------------------------------------*/
